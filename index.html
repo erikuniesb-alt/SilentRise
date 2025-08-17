@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SilentRise</title>
+
+    <!-- iOS Vollbild & Titel -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SilentRise">
+
+  <!-- Android Statusleistenfarbe -->
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- Icon für Homescreen (optional: eigenes Icon einsetzen) -->
+  <link rel="icon" type="image/png" href="icon-192.png">
+
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+  <link rel="stylesheet" as="style" onload="this.rel='stylesheet'"
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Noto+Sans:wght@400;500;700;900&display=swap">
+
+  <style>
+    html, body {
+      height: 100%;
+      overscroll-behavior-y: contain;
+      margin: 0;
+    }
+
+    body {
+      font-family: Manrope, "Noto Sans", sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 70px;
+    }
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: white;
+      border-top: 1px solid #d1d5db;
+    }
+    .hidden { display: none; }
+    .active-tab { color: #111418; }
+    .inactive-tab { color: #6a7581; }
+
+    /* Scrollrad groß (Wecker) */
+    .scroll-container {
+      height: 160px;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+    }
+    .scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+    .scroll-item {
+      position: relative;
+      z-index: 10;
+      height: 40px;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      scroll-snap-align: center;
+      color: #9ca3af;
+      transition: color 0.2s ease;
+    }
+    .scroll-item.active {
+      color: #111418;
+      font-weight: 700;
+    }
+    .scroll-highlight-bar {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 90%;
+      height: 40px;
+      transform: translateY(-50%);
+      background-color: #f3f4f6;
+      border-radius: 9999px;
+      z-index: 0;
+    }
+
+    /* Karten-Stil */
+    .card {
+      background-color: #ffffff;
+      border-radius: 1rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e5e7eb;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    /* Toggle Design */
+    .toggle-bg {
+      background-color: #d1d5db;
+      transition: background-color 0.2s ease;
+    }
+    .toggle-input:checked + .toggle-bg {
+      background-color: #3b82f6;
+    }
+    .toggle-dot {
+      transition: transform 0.2s ease;
+    }
+    .toggle-input:checked + .toggle-bg .toggle-dot {
+      transform: translateX(20px);
+    }
+    .toggle-disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    /* Bearbeitungsfeld Schlafplan */
+.bearbeitungsfeld {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+
+  /* — Padding — */
+  /* Seitenabstand (links / rechts) bleibt 1 rem */
+  padding: 0 1rem;
+  /* oben und unten etwas mehr Luft */
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 2rem;
+  position: relative;
+
+  /* — Mindesthöhe, damit Scroll-Rad immer komplett reinpasst — */
+  min-height: 372px;   /* nach Bedarf justieren */
+}
+
+
+    /* Vertikale Tage */
+    .vertikale-tage {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+    }
+    .tag-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100px;
+      cursor: pointer;
+      padding: 0.4rem;
+      border-radius: 0.5rem;
+      background-color: #f3f4f6;
+      color: #6b7280;
+      font-weight: 600;
+      font-size: 1rem;
+      position: relative;
+    }
+    .tag-container.aktiv {
+      background-color: #111418;
+      color: #ffffff;
+    }
+    .tag-zeit {
+      font-size: 0.8rem;
+      margin-left: 6px;
+      color: #e5e7eb;
+    }
+    .tag-container.aktiv .tag-zeit {
+      color: #ffffff;
+    }
+
+    /* Scrollrad rechts neben aktivem Tag (klein) */
+    .scrollrad-wrapper {
+      position: absolute;
+      left: 140px;
+      width: 120px;
+      height: 100px;
+      display: none;
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+
+      
+    }
+    .scrollrad-klein {
+      height: 100%;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+     /* scroll-behavior: smooth; */
+    }
+    .scrollrad-klein::-webkit-scrollbar {
+      display: none;
+    }
+    .scrollrad-klein .scroll-item {
+      height: 30px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      scroll-snap-align: center;
+      color: #9ca3af;
+    }
+    .scrollrad-klein .scroll-item.active {
+      color: #111418;
+      font-weight: 700;
+    }
+    
+    
+  </style>
+</head>
+<body class="bg-white">
+
+<main class="flex-grow">
+
+  <!-- Seite 1: Wecker -->
+  <div id="seite-wecker" class="flex flex-col justify-between h-full">
+    <div class="p-4">
+      <h2 class="text-[#111418] text-3xl font-bold text-center mt-12 mb-10">SilentRise</h2>
+
+      <div id="wecker-uebersicht" class="flex flex-col gap-6 mt-20">
+        <!-- Anna -->
+        <div class="card" onclick="toggleEditMode('Anna')">
+          <div class="flex flex-col">
+            <span class="text-lg font-semibold text-[#111418]">Anna</span>
+            <span id="zeit-anna" class="text-2xl font-bold mt-1">07:00</span>
+          </div>
+          <label class="inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle-anna" class="sr-only toggle-input">
+            <div class="toggle-bg w-12 h-7 rounded-full relative">
+              <div class="toggle-dot absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full"></div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Markus -->
+        <div class="card" onclick="toggleEditMode('Markus')">
+          <div class="flex flex-col">
+            <span class="text-lg font-semibold text-[#111418]">Markus</span>
+            <span id="zeit-markus" class="text-2xl font-bold mt-1">07:00</span>
+          </div>
+          <label class="inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle-markus" class="sr-only toggle-input">
+            <div class="toggle-bg w-12 h-7 rounded-full relative">
+              <div class="toggle-dot absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full"></div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Scrollrad -->
+        <div id="scrollrad-container" class="hidden flex gap-10 h-40 relative justify-center mt-6">
+          <div class="scroll-highlight-bar"></div>
+          <div class="flex-1 scroll-container text-center" id="stunden-scroll"></div>
+          <div class="flex-1 scroll-container text-center" id="minuten-scroll"></div>
+        </div>
+      </div>
+    </div>
+
+    <p id="naechster-wecker-text" class="text-center text-gray-500 text-base mb-6">
+      Der nächste Wecker weckt sanft in …
+    </p>
+  </div>
+
+  <!-- Seite 2: Schlafplan -->
+  <div id="seite-schlafplan" class="hidden flex flex-col justify-between">
+    <div class="p-4">
+      <h2 class="text-[#121416] text-3xl font-bold text-center mt-12 mb-10">Schlafplan</h2>
+
+      <!-- Anna -->
+      <div class="card mt-20 flex items-center justify-between" id="card-anna-schlafplan" onclick="togglePlanEditMode('Anna')">
+        <span class="text-lg font-semibold text-[#111418] w-20">Anna</span>
+
+        <label class="inline-flex items-center cursor-pointer w-16 justify-center toggle-disabled" id="toggle-container-anna">
+          <input type="checkbox" id="toggle-anna-plan" class="sr-only toggle-input">
+          <div class="toggle-bg w-12 h-7 rounded-full relative pointer-events-none">
+            <div class="toggle-dot absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full"></div>
+          </div>
+        </label>
+
+        <div class="flex gap-2 text-sm text-gray-500">
+          <span>Mo</span>
+          <span>Di</span>
+          <span>Mi</span>
+          <span>Do</span>
+          <span>Fr</span>
+          <span>Sa</span>
+          <span>So</span>
+        </div>
+      </div>
+
+      <!-- Bearbeitungsfeld Anna -->
+      <div id="bearbeitung-anna" class="hidden"></div>
+
+      <!-- Markus -->
+      <div class="card mt-6 flex items-center justify-between" id="card-markus-schlafplan" onclick="togglePlanEditMode('Markus')">
+        <span class="text-lg font-semibold text-[#111418] w-20">Markus</span>
+
+        <label class="inline-flex items-center cursor-pointer w-16 justify-center toggle-disabled" id="toggle-container-markus">
+          <input type="checkbox" id="toggle-markus-plan" class="sr-only toggle-input">
+          <div class="toggle-bg w-12 h-7 rounded-full relative pointer-events-none">
+            <div class="toggle-dot absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full"></div>
+          </div>
+        </label>
+
+        <div class="flex gap-2 text-sm text-gray-500">
+          <span>Mo</span>
+          <span>Di</span>
+          <span>Mi</span>
+          <span>Do</span>
+          <span>Fr</span>
+          <span>Sa</span>
+          <span>So</span>
+        </div>
+      </div>
+
+      <!-- Bearbeitungsfeld Markus -->
+      <div id="bearbeitung-markus" class="hidden"></div>
+    </div>
+  </div>
+
+  <!-- Seite 3: Einstellungen -->
+  <div id="seite-einstellungen" class="hidden flex flex-col justify-between">
+    <div>
+      <div class="flex items-center bg-white p-4 justify-center mt-0">
+        <h2 class="text-[#121416] text-3xl font-bold flex-1 text-center mt-12 mb-8">Einstellungen</h2>
+      </div>
+
+      <h2 class="text-[#121416] text-[22px] font-bold px-4 pb-3 pt-1">Vibration</h2>
+
+      <!-- Person 1 -->
+      <h3 class="text-[#121416] text-lg font-bold px-4 pb-2 pt-4">Anna</h3>
+      <div class="px-4 mb-4">
+        <label class="block mb-2">Stärke: <span id="p1-staerke-wert">50</span></label>
+        <input type="range" id="p1-staerke" min="0" max="100" value="50" class="w-full mb-4">
+        <label class="block mb-2">Schlummern (Minuten): <span id="p1-schlummer-wert">5</span></label>
+        <input type="range" id="p1-schlummer" min="0" max="15" value="5" class="w-full mb-6">
+      </div>
+
+      <!-- Person 2 -->
+      <h3 class="text-[#121416] text-lg font-bold px-4 pb-2 pt-4">Markus</h3>
+      <div class="px-4 mb-4">
+        <label class="block mb-2">Stärke: <span id="p2-staerke-wert">75</span></label>
+        <input type="range" id="p2-staerke" min="0" max="100" value="75" class="w-full mb-4">
+        <label class="block mb-2">Schlummern (Minuten): <span id="p2-schlummer-wert">10</span></label>
+        <input type="range" id="p2-schlummer" min="0" max="15" value="10" class="w-full mb-6">
+      </div>
+
+      <!-- Bettseite -->
+<!-- Bettseite -->
+<h2 class="text-[#121416] text-[22px] font-bold px-4 pb-3 pt-5">Bettseite</h2>
+
+<div id="bettseite-auswahl" class="flex flex-wrap gap-3 p-4"></div>
+
+
+      <!-- Andere -->
+      <h2 class="text-[#121416] text-[22px] font-bold px-4 pb-3 pt-5">Andere</h2>
+
+      <div onclick="zeigeSeite('seite-vibrationstest', this)"
+     class="flex items-center gap-4 bg-white px-4 min-h-14 justify-between border-t border-[#f1f2f4] cursor-pointer">
+  <p class="text-[#121416] text-base font-normal flex-1 truncate">Vibrationstest</p>
+  <div class="shrink-0">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+      <path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path>
+    </svg>
+  </div>
+</div>
+
+
+      <div onclick="zeigeSeite('seite-bluetooth', this)"
+     class="flex items-center gap-4 bg-white px-4 min-h-14 justify-between border-t border-[#f1f2f4] cursor-pointer">
+  <p class="text-[#121416] text-base font-normal flex-1 truncate">Bluetooth Verbindung</p>
+  <div class="shrink-0">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+      <path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path>
+    </svg>
+  </div>
+</div>
+
+
+      <div class="flex items-center gap-4 bg-white px-4 min-h-14 justify-between border-t border-[#f1f2f4] cursor-pointer"
+     onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSeUvtNsoBbzX33NosQkMGXj3A8w2_iqJssEvVGpYvS9-R9pTw/viewform?usp=dialog', '_blank')">
+  <p class="text-[#121416] text-base font-normal flex-1 truncate">Feedback geben</p>
+  <div class="shrink-0">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+      <path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path>
+    </svg>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- Seite: Bluetooth Verbindung -->
+<div id="seite-bluetooth" class="hidden flex flex-col h-full">
+  <!-- Header mit Zurück-Pfeil -->
+  <div class="flex items-center pt-6 pb-4 px-4 border-b border-gray-200">
+    <button onclick="zeigeSeite('seite-einstellungen', this)" class="flex items-center text-blue-500">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+        <path d="M160,216a8,8,0,0,1-5.66-2.34l-80-80a8,8,0,0,1,0-11.32l80-80A8,8,0,0,1,165.66,53.66L91.31,128l74.35,74.34A8,8,0,0,1,160,216Z"/>
+      </svg>
+      <span class="ml-1">Zurück</span>
+    </button>
+  </div>
+
+  <!-- Inhalt -->
+  <div class="p-4 mt-10 flex flex-col gap-6">
+
+    <!-- Statusbox wieder wie vorher -->
+    <div class="card flex items-center justify-between">
+      <div class="flex flex-col">
+        <span class="text-lg font-semibold text-[#121416]">Verbindungsstatus</span>
+        <span id="bt-status" class="text-gray-500">Nicht verbunden</span>
+      </div>
+      <button id="bt-button" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">
+        Verbinden
+      </button>
+    </div>
+
+    <!-- Geräte-Info -->
+    <div class="card flex flex-col gap-2">
+      <span class="text-lg font-semibold text-[#121416]">Gerät</span>
+      <span id="bt-device" class="text-gray-500">Kein Gerät ausgewählt</span>
+    </div>
+
+    <!-- Hinweis -->
+    <p class="text-center text-sm text-gray-400">
+      Stellen Sie sicher, dass Bluetooth auf Ihrem Gerät aktiviert ist.
+    </p>
+  </div>
+</div>
+
+<!-- Seite: Vibrationstest -->
+<div id="seite-vibrationstest" class="hidden flex flex-col h-full">
+  <!-- Header -->
+  <div class="flex items-center pt-6 pb-4 px-4 border-b border-gray-200">
+    <button onclick="zeigeSeite('seite-einstellungen', this)" class="flex items-center text-blue-500">
+      <!-- zurück-Pfeil -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+        <path d="M160,216a8,8,0,0,1-5.66-2.34l-80-80a8,8,0,0,1,0-11.32l80-80A8,8,0,0,1,165.66,53.66L91.31,128l74.35,74.34A8,8,0,0,1,160,216Z"/>
+      </svg>
+      <span class="ml-1">Zurück</span>
+    </button>
+  </div>
+
+  <!-- Inhalt -->
+  
+<div class="p-4 pt-12 flex flex-col gap-6">
+    <!-- Zwei Test-Buttons -->
+   <div class="flex gap-4 justify-center">
+  <button id="vibtest-anna"
+          class="w-32 rounded-xl py-4 bg-[#f1f2f4] text-[#121416] font-semibold active:scale-95 transition">
+    Anna
+  </button>
+  <button id="vibtest-markus"
+          class="w-32 rounded-xl py-4 bg-[#f1f2f4] text-[#121416] font-semibold active:scale-95 transition">
+    Markus
+  </button>
+</div>
+
+
+    <p class="text-center text-sm text-gray-400">
+      Bluetooth muss verbunden sein, damit der Test ausgelöst wird.
+    </p>
+  </div>
+</div>
+
+
+ 
+
+</main>
+
+<footer class="flex justify-around py-3">
+  <button onclick="zeigeSeite('seite-wecker', this)" class="flex flex-col items-center active-tab">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+      <path d="M61.66,29.66l-32,32A8,8,0,0,1,18.34,50.34l32-32A8,8,0,1,1,61.66,29.66Zm176,20.68-32-32a8,8,0,0,0-11.32,11.32l32,32a8,8,0,0,0,11.32-11.32ZM224,128a96,96,0,1,1-96-96A96.11,96.11,0,0,1,224,128Zm-32,0a8,8,0,0,0-8-8H136V72a8,8,0,0,0-16,0v56a8,8,0,0,0,8,8h56A8,8,0,0,0,192,128Z"></path>
+    </svg>
+    <p class="text-xs">Wecker</p>
+  </button>
+  <button onclick="zeigeSeite('seite-schlafplan', this)" class="flex flex-col items-center inactive-tab">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+      <path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"></path>
+    </svg>
+    <p class="text-xs">Schlafplan</p>
+  </button>
+  <button onclick="zeigeSeite('seite-einstellungen', this)" class="flex flex-col items-center inactive-tab">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+      <path d="M216,130.16q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.6,107.6,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.29,107.29,0,0,0-26.25-10.86,8,8,0,0,0-7.06,1.48L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.6,107.6,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.21,107.21,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"></path>
+    </svg>
+    <p class="text-xs">Einstellungen</p>
+  </button>
+</footer>
+
+<!-- Alarm Popup Apple-Style -->
+<div id="alarm-popup" class="hidden fixed inset-0 bg-black bg-opacity-97 flex flex-col justify-between z-50 text-white">
+  <!-- Obere Uhrzeit -->
+  <div class="mt-20 text-center">
+    <h1 id="alarm-time" class="text-6xl font-bold">07:00</h1>
+    <p id="alarm-subtitle" class="text-lg mt-2 text-gray-300">Wecker</p>
+  </div>
+
+  <!-- Schlummern Button (orange, rund) -->
+  <div class="flex justify-center">
+    <button id="snooze-btn"  
+        onclick="schlummern()"
+      class="bg-[#FF9500] rounded-full w-44 py-5 text-xl font-semibold shadow-lg active:scale-95 transition">
+      Schlummern
+    </button>
+  </div>
+
+  <!-- Stop Button (grau, rechteckig-rund) -->
+  <div class="mb-12 flex justify-center">
+    <button onclick="stopAlarm()" 
+      class="bg-[#3A3A3C] rounded-xl px-14 py-5 text-xl font-semibold shadow-md active:scale-95 transition">
+      Stop
+    </button>
+  </div>
+</div>
+
+
+<script src="app.js"></script>
+</body>
+</html>
